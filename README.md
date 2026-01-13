@@ -423,6 +423,10 @@ def index(request):
 
 ---
 
+---
+
+---
+
 ## Module 4: Templates & Static Files
 
 ### 4.2 Adding & Registering Templates
