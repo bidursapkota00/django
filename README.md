@@ -1,10 +1,15 @@
 # Django Complete Course
 
+![Bidur Sapkota](https://www.bidursapkota.com.np/images/gravatar.webp "Bidur Sapkota - Developer")&nbsp;[Bidur Sapkota](https://www.bidursapkota.com.np/)
+
+![Django Complete Guide by Bidur Sapkota](/images/unit-3/13-django-post-1200.webp "Django Complete Guide – Blog by Bidur Sapkota")
+
 ## Table of Content
 
 - [Getting Started](#getting-started)
 - [Django Setup](#django-setup)
 - [URLs & Views](#urls--views)
+- [Templates & Static Files](#templates--static-files)
 
 ---
 
@@ -168,7 +173,7 @@ python manage.py startapp myapp
 
 **App Structure:**
 
-```
+```text
 myapp/
 ├── __init__.py
 ├── admin.py      # Admin panel configuration
@@ -427,17 +432,17 @@ def index(request):
 
 ---
 
-## Module 4: Templates & Static Files
+## Templates & Static Files
 
-### 4.2 Adding & Registering Templates
+### Adding & Registering Templates
 
 **Create templates folder**
 
-```
+```text
 challenges/
 └── templates/
     └── challenges/
-        └── index.html
+        └── challenge.html
 ```
 
 **Register app in settings.py**
@@ -451,39 +456,109 @@ INSTALLED_APPS = [
 
 ---
 
-### 4.3 Rendering Templates
+### Challenge Template
+
+**Add content in challenges/templates/challenges/challenge.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>This Month's Challenge</h1>
+    <h2>Challenge text</h2>
+  </body>
+</html>
+```
+
+### Rendering Templates
+
+**Using render_to_string**
+
+```py
+# challenges/views.py
+from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
+from django.urls import reverse
+from django.template.loader import render_to_string
+
+def monthly_challenge(request, month):
+    try:
+        challenge_text = monthly_challenges[month.lower()]
+        response_data = render_to_string("challenges/challenge.html")
+        return HttpResponse(response_data)
+    except:
+        return HttpResponseNotFound("<h1>This month is not supported!</h1>")
+```
+
+**Using render**
 
 ```python
 # challenges/views.py
 from django.shortcuts import render
+from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
+from django.urls import reverse
 
-def index(request):
-    return render(request, 'challenges/index.html')
+def monthly_challenge(request, month):
+    try:
+        challenge_text = monthly_challenges[month.lower()]
+        return render(request, "challenges/challenge.html")
+    except:
+        return HttpResponseNotFound("<h1>This month is not supported!</h1>")
 ```
 
 ---
 
-### 4.4 Template Language & Variable Interpolation
+### Template Language & Variable Interpolation
 
 ```html
-<!-- challenges/templates/challenges/index.html -->
-<h1>{{ title }}</h1>
-<p>{{ description }}</p>
+<!-- challenges/templates/challenges/challenge.html -->
+<h1>This Month's Challenge</h1>
+<h2>{{ text }}</h2>
 ```
 
 ```python
-# views.py
-def index(request):
-    context = {
-        'title': 'Monthly Challenges',
-        'description': 'Choose your challenge!'
-    }
-    return render(request, 'challenges/index.html', context)
+# challenges/views.py
+def monthly_challenge(request, month):
+    try:
+        challenge_text = monthly_challenges[month.lower()]
+        return render(request, "challenges/challenge.html", {
+            "text": challenge_text
+        })
+    except:
+        return HttpResponseNotFound("<h1>This month is not supported!</h1>")
+```
+
+**Adding month name too**
+
+```html
+<head>
+  <title>{{ month_name }} Challenge</title>
+</head>
+<body>
+  <h1>{{ month_name }} Challenge</h1>
+  <h2>{{ text }}</h2>
+</body>
+```
+
+```py
+def monthly_challenge(request, month):
+    try:
+        challenge_text = monthly_challenges[month.lower()]
+        return render(request, "challenges/challenge.html", {
+            "text": challenge_text,
+            "month_name": month.capitalize()
+        })
+    except:
+        return HttpResponseNotFound("<h1>This month is not supported!</h1>")
 ```
 
 ---
 
-### 4.5 Filters
+### Filters
 
 **Common Filters:**
 
@@ -502,73 +577,147 @@ def index(request):
 <!-- Mark as safe HTML -->
 ```
 
----
-
-### 4.6 Tags & the "for" Tag
-
 ```html
-<ul>
-  {% for month in months %}
-  <li>{{ month }}</li>
-  {% empty %}
-  <li>No months available</li>
-  {% endfor %}
-</ul>
-
-<!-- Loop counter -->
-{% for item in items %} {{ forloop.counter }} - {{ item }} {% endfor %}
+<head>
+  <title>{{ month_name|title }} Challenge</title>
+</head>
+<body>
+  <h1>{{ month_name|title }} Challenge</h1>
+  <h2>{{ text }}</h2>
+</body>
 ```
 
 ---
 
-### 4.7 The URL Tag for Dynamic URLs
+### Tags & the "for" Tag
 
-```html
-<!-- Instead of hardcoding URLs -->
-<a href="{% url 'monthly-challenge' month='january' %}">January</a>
+**First, update index view with template**
 
-<!-- With variable -->
-<a href="{% url 'monthly-challenge' month=month_name %}">{{ month_name }}</a>
-```
-
----
-
-### 4.8 The "if" Tag for Conditional Content
-
-```html
-{% if user.is_authenticated %}
-<p>Welcome, {{ user.username }}!</p>
-{% elif user.is_guest %}
-<p>Welcome, Guest!</p>
-{% else %}
-<p>Please log in.</p>
-{% endif %}
-
-<!-- Comparison operators -->
-{% if score > 90 %}
-<p>Excellent!</p>
-{% endif %}
-```
-
----
-
-### 4.9 Template Inheritance
-
-**base.html (Parent Template):**
+**Create challenges/templates/challenges/index.html template**
 
 ```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>{% block title %}My Site{% endblock %}</title>
-    {% block css %}{% endblock %}
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Challenges</title>
   </head>
   <body>
-    <nav><!-- Navigation --></nav>
+    <ul>
+      <li><a href="/challenges/january">January</a></li>
+      <li><a href="/challenges/february">February</a></li>
+      <li><a href="/challenges/march">March</a></li>
+      <li><a href="/challenges/april">April</a></li>
+      <li><a href="/challenges/may">May</a></li>
+      <li><a href="/challenges/june">June</a></li>
+      <li><a href="/challenges/july">July</a></li>
+      <li><a href="/challenges/august">August</a></li>
+      <li><a href="/challenges/september">September</a></li>
+      <li><a href="/challenges/october">October</a></li>
+      <li><a href="/challenges/november">November</a></li>
+      <li><a href="/challenges/december">December</a></li>
+    </ul>
+  </body>
+</html>
+```
 
-    <main>{% block content %}{% endblock %}</main>
+```py
+# challenges/views.py
+def index(request):
+    months = list(monthly_challenges.keys())
 
-    <footer>© 2024</footer>
+    return render(request, "challenges/index.html", {
+        "months": months
+    })
+```
+
+```html
+<!-- challenges/templates/challenges/index.html -->
+<ul>
+  {% for month in months %}
+  <li>
+    <a href="/challenges/{{month}}">
+      {{ forloop.counter }} - {{ month|title }}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+```
+
+---
+
+### The URL Tag for Dynamic URLs
+
+```html
+<!-- challenges/templates/challenges/index.html -->
+<ul>
+  {% for month in months %}
+  <li>
+    <a href="{% url 'monthly-challenge' month %}">
+      {{ forloop.counter }} - {{ month|title }}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+```
+
+---
+
+### The "if" Tag for Conditional Content
+
+**Update monthly challenge dictionary**
+
+```py
+# challenges/views.py
+monthly_challenges = {
+    'january': 'Exercise daily for 30 minutes',
+    # ...
+    'december': None
+}
+```
+
+```html
+<!-- challenges/templates/challenges/challenge.html -->
+<h1>{{ month_name|title }} Challenge</h1>
+{% if text is not None %}
+<h2>{{ text }}</h2>
+{% else %}
+<p>There is no challenge for this month yet!</p>
+{% endif %}
+```
+
+---
+
+### Template Inheritance
+
+**Update settings.py to add global templates folder location**
+
+```py
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            BASE_DIR / "templates"
+        ],
+        'APP_DIRS': True,
+        # ...
+    }
+]
+```
+
+**Create templates/base.html (Parent Template):**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block page_title %}My Challenges{% endblock %}</title>
+  </head>
+  <body>
+    {% block content %}{% endblock %}
   </body>
 </html>
 ```
@@ -576,81 +725,325 @@ def index(request):
 **Child Template:**
 
 ```html
-{% extends "base.html" %} {% block title %}Home Page{% endblock %} {% block
-content %}
-<h1>Welcome to our site!</h1>
+<!-- challenges\templates\challenges\index.html -->
+<!-- pre tag is not required, just for proper blog format -->
+<pre>
+{% extends "base.html" %}
+
+{% block page_title %}
+  All Challenges
 {% endblock %}
+
+{% block content %}
+  <ul>
+    {% for month in months %}
+      <li><a href="{% url 'monthly-challenge' month %}">{{ month|title }}</a></li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+</pre>
 ```
-
----
-
-### 4.10 Including Partial Template Snippets
 
 ```html
-<!-- _header.html (partial) -->
-<header>
-  <h1>{{ site_name }}</h1>
-</header>
+<!-- challenges\templates\challenges\challenge.html -->
+<pre>
+{% extends "base.html" %}
 
-<!-- main template -->
-{% include "_header.html" with site_name="My Blog" %}
+{% block page_title %}
+  {{ month_name|title }} Challenge
+{% endblock %}
+  
+{% block content %}
+  <h1>{{ month_name|title }} Challenge</h1>
+  {% if text is not None %}
+    <h2>{{ text }}</h2>
+  {% else %}
+    <p>There is no challenge for this month yet!</p>
+  {% endif %}
+{% endblock %}
+</pre>
 ```
 
 ---
 
-### 4.11 404 Templates
+### Including Partial Template Snippets
+
+**Create challenges\templates\challenges\includes\header.html**
+
+```html
+<header>
+  <nav>
+    <a href="{% url "index" %}">All Challenges</a>
+  </nav>
+</header>
+```
+
+**Add include header to both index and challenge template**
+
+```html
+<pre>
+{% block content %}
+  {% include "challenges/includes/header.html" %}
+  <!-- ... -->
+{% endblock %}
+</pre>
+```
+
+---
+
+### 404 Templates
 
 **Create templates/404.html:**
 
 ```html
-{% extends "base.html" %} {% block title %}Page Not Found{% endblock %} {% block
-content %}
-<h1>404 - Page Not Found</h1>
-<p>The page you're looking for doesn't exist.</p>
-<a href="{% url 'home' %}">Go Home</a>
+<pre>
+{% extends "base.html" %}
+
+{% block page_title %}
+  Something went wrong - we could not find that page!
+{%endblock%}
+
+{% block content %}
+  <h1>We could not find that page!</h1>
+  <p>Sorry, but we could not find a matching page!</p>
 {% endblock %}
+</pre>
+```
+
+```py
+from django.http import Http404
+
+def monthly_challenge(request, month):
+    try:
+        challenge_text = monthly_challenges[month.lower()]
+        return render(request, "challenges/challenge.html", {
+            "text": challenge_text,
+            "month_name": month
+        })
+    except:
+        raise Http404()
 ```
 
 **Note:** Set `DEBUG = False` in settings.py to see custom 404 pages.
 
 ---
 
-### 4.12 Adding Static Files
+### Adding Static Files
 
-**Step 1: Create static folder**
+**Create static folder**
 
-```
+```text
 challenges/
 └── static/
     └── challenges/
         ├── css/
-        │   └── styles.css
+        │   └── challenges.css
         └── images/
             └── logo.png
 ```
 
-**Step 2: Load in template**
+**Load in template**
+
+```css
+/* challenges\static\challenges\css\challenges.css */
+ul {
+  list-style: none;
+}
+```
 
 ```html
+<!-- templates\base.html -->
+<head>
+  {% block css_files %}{% endblock %}
+</head>
+```
+
+```html
+<!-- challenges\templates\challenges\index.html -->
+<pre>
 {% load static %}
 
-<link rel="stylesheet" href="{% static 'challenges/css/styles.css' %}" />
-<img src="{% static 'challenges/images/logo.png' %}" alt="Logo" />
+{% block css_files %}
+  <link rel="stylesheet" href="{% static 'challenges/css/challenges.css' %}">
+{% endblock %}
+</pre>
 ```
 
 ---
 
-### 4.13 Adding Global Static Files
+### Adding Global Static Files
 
 **settings.py:**
 
 ```python
+STATIC_URL = '/static/'
+
 STATICFILES_DIRS = [
     BASE_DIR / 'static',  # Global static files
 ]
-
-STATIC_URL = '/static/'
 ```
+
+**Create static\styles.css**
+
+```css
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap");
+
+html {
+  font-family: "Roboto Condensed", sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: #1a1a1a;
+}
+```
+
+```html
+<!-- templates\base.html -->
+<pre>
+{% load static %}
+
+<head>
+    <link rel="stylesheet" href="{% static "styles.css" %}">
+    {% block css_files %}{% endblock %}
+</head>
+</pre>
+```
+
+### More CSS
+
+**Create challenges\static\challenges\includes\header.css**
+
+```css
+header {
+  width: 100%;
+  height: 5rem;
+  background-color: #353535;
+}
+
+header nav {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+header nav a {
+  color: white;
+  font-size: 2rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+header nav a:hover,
+header nav a:active {
+  color: #cf54a6;
+}
+```
+
+**Create challenges\static\challenges\challenge.css**
+
+```css
+h1,
+h2 {
+  text-align: center;
+  color: white;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 2rem 0 1rem 0;
+  font-weight: normal;
+  color: #cf54a6;
+}
+
+h2 {
+  font-size: 3rem;
+  font-weight: bold;
+}
+
+.fallback {
+  text-align: center;
+  color: white;
+}
+```
+
+**Update challenges\static\challenges\challenges.css**
+
+```css
+ul {
+  list-style: none;
+  margin: 2rem auto;
+  width: 90%;
+  max-width: 20rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+  padding: 1rem;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  height: 30rem;
+  background-color: #eeeeee;
+}
+
+li {
+  margin: 1rem 0;
+  text-align: center;
+  font-size: 1.5rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 1rem;
+}
+
+li:last-of-type,
+li:nth-of-type(6) {
+  border-bottom: none;
+}
+
+li a {
+  text-decoration: none;
+  color: #383838;
+}
+
+li a:hover,
+li a:active {
+  color: #7e0154;
+}
+```
+
+**Update challenges\templates\challenges\challenge.html**
+
+```html
+<pre>
+{% extends "base.html" %}
+{% load static %}
+
+{% block css_files %}
+  <link rel="stylesheet" href="{% static "challenges/challenge.css" %}">
+  <link rel="stylesheet" href="{% static "challenges/includes/header.css" %}">
+{% endblock %}
+</pre>
+```
+
+**Update challenges\templates\challenges\index.html**
+
+```html
+<pre>
+{% extends "base.html" %}
+{% load static %}
+
+{% block css_files %}
+  <link rel="stylesheet" href="{% static "challenges/challenges.css" %}">
+  <link rel="stylesheet" href="{% static "challenges/includes/header.css" %}">
+{% endblock %}
+</pre>
+```
+
+---
+
+---
+
+---
 
 ## Module 5: Project Blog - Basics
 
