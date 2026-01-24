@@ -1045,6 +1045,738 @@ li a:active {
 
 ---
 
+---
+
+---
+
+---
+
+## Data and Models
+
+### What is ORM?
+
+ORM (Object-Relational Mapping) is a technique that lets you work with databases using your programming language's objects instead of writing SQL queries.
+
+**Benefits of ORM:**
+
+- Write Python (or other language) instead of SQL
+- Database-agnostic code
+- Automatic SQL injection protection
+- Easier to maintain and read
+- Object-oriented database access
+
+**How ORM Works:**
+
+![Class to Table Mapping](/images/unit-3/class-to-table-mapping.webp)
+
+**Supported Databases:**
+
+- SQLite (default, file-based)
+- PostgreSQL (recommended for production)
+- MySQL
+- Oracle
+
+**Create fresh project**
+
+```bash
+# Create fresh project for this module
+django-admin startproject book_store
+cd book_store
+python manage.py startapp book_outlet
+```
+
+**Register in settings.py:**
+
+```python
+INSTALLED_APPS = [
+    # ...
+    'book_outlet',
+]
+```
+
+### Django ORM
+
+Django includes a powerful built-in ORM. You define models as Python classes, and Django handles the database operations.
+
+**Defining Models**
+
+Models are defined in `models.py`:
+
+```py
+from django.db import models
+
+class Book(models.Model):
+  title = models.CharField(max_length=50)
+  rating = models.IntegerField()
+```
+
+**Equivalent to sql below after we migrate**
+
+```sql
+CREATE TABLE books (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  rating INTEGER NOT NULL
+)
+```
+
+**Create file `db.sqlite3` if not present already.**
+
+---
+
+### Common Field Types
+
+| Field Type        | Description                      | Example                               |
+| ----------------- | -------------------------------- | ------------------------------------- |
+| `CharField`       | Short text (requires max_length) | `name = CharField(max_length=100)`    |
+| `TextField`       | Long text                        | `bio = TextField()`                   |
+| `IntegerField`    | Integer numbers                  | `age = IntegerField()`                |
+| `FloatField`      | Decimal numbers                  | `price = FloatField()`                |
+| `BooleanField`    | True/False                       | `active = BooleanField(default=True)` |
+| `DateField`       | Date only                        | `birth_date = DateField()`            |
+| `DateTimeField`   | Date and time                    | `created_at = DateTimeField()`        |
+| `EmailField`      | Email validation                 | `email = EmailField()`                |
+| `URLField`        | URL validation                   | `website = URLField()`                |
+| `ForeignKey`      | Many-to-one relationship         | `author = ForeignKey(Author)`         |
+| `ManyToManyField` | Many-to-many relationship        | `tags = ManyToManyField(Tag)`         |
+
+---
+
+### Field Options
+
+| Option         | Description                          |
+| -------------- | ------------------------------------ |
+| `max_length`   | Maximum length for CharField         |
+| `default`      | Default value for the field          |
+| `null=True`    | Allow NULL in database               |
+| `blank=True`   | Allow empty in forms                 |
+| `unique=True`  | Enforce unique values                |
+| `choices`      | Limit to specific choices            |
+| `auto_now_add` | Set to current time on creation      |
+| `auto_now`     | Update to current time on every save |
+
+---
+
+### Migrations
+
+After defining/changing models, you need to create and apply migrations:
+
+```bash
+# Create migration files based on model changes
+python manage.py makemigrations
+
+# Apply migrations to database
+python manage.py migrate
+```
+
+**What migrations do:**
+
+1. Detect changes in your models
+2. Generate SQL to update the database
+3. Keep track of database schema versions
+4. Allow reverting changes
+
+**Open Django Shell**
+
+```bash
+python3 manage.py shell
+```
+
+**Create Book**
+
+```py
+from book_outlet.models import Book
+harry_potter = Book(title="Harry Potter 1 – The Philosopher's Stone", rating=5)
+harry_potter.save()
+```
+
+**Equivalent to:**
+
+```sql
+INSERT INTO books ( title, rating )
+VALUES ('Lord of the Rings', 5)
+```
+
+```py
+lord_of_the_rings = Book(title="Lord of the Rings", rating=4)
+lord_of_the_rings.save()
+```
+
+**Read Book**
+
+```py
+Book.objects.all()
+# <QuerySet [<Book: Book object (1)>, <Book: Book object (2)>]>
+```
+
+**Equivalent to:**
+
+```sql
+SELECT * FROM books;
+```
+
+---
+
+**Add more attributes and str method**
+
+```py
+from django.core import validators
+from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+class Book(models.Model):
+    title = models.CharField(max_length=50)
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)])
+    author = models.CharField(null=True, max_length=100)
+    is_bestselling = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.title} ({self.rating})"
+```
+
+**Migrate**
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+
+# Open Django Shell
+python3 manage.py shell
+```
+
+**Read and Update**
+
+```py
+from book_outlet.models import Book
+
+Book.objects.all()[1]
+# <Book: Lord of the Rings (4)>
+
+Book.objects.all()[1].author
+Book.objects.all()[1].is_bestselling
+# False
+
+Book.objects.all()[1].rating
+# 4
+
+harry_potter = Book.objects.all()[0]
+harry_potter.title
+# "Harry Potter 1 – The Philosopher's Stone"
+
+lotr = Book.objects.all()[1]
+lotr.title
+# 'Lord of the Rings'
+
+harry_potter.author = "J.K. Rowling"
+harry_potter.is_bestselling = True
+harry_potter.save()
+
+Book.objects.all()[0].author
+# 'J.K. Rowling'
+
+lotr.author = "J.R.R. Tolkien"
+lotr.is_bestselling = True
+lotr.save()
+
+Book.objects.all()[1].author
+# 'J.R.R. Tolkien'
+
+Book.objects.all()[1].is_bestselling
+# True
+```
+
+```py
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path("", include("book_outlet.urls"))
+]
+```
+
+**Delete**
+
+```py
+harry_potter = Book.objects.all()[0]
+harry_potter.delete()
+# (1, {'book_outlet.Book': 1})
+Book.objects.all()
+# <QuerySet [<Book: Lord of the Rings (4)>]>
+```
+
+**create method**
+
+```py
+Book.objects.create(title="Harry Potter 1", rating=5, author="J.K. Rowling", is_bestselling=True)
+# <Book: Harry Potter 1 (5)>
+Book.objects.all()
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+Book.objects.create(title="My Story", rating=2, author="Max", is_bestselling=False)
+# <Book: My Story (2)>
+Book.objects.create(title="Some random book", rating=1, author="Random Dude", is_bestselling=False)
+# <Book: Some random book (1)>
+Book.objects.all()
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>, <Book: My Story (2)>, <Book: Some random book (1)>]>
+```
+
+**get method**
+
+```py
+Book.objects.get(title="My Story")
+# <Book: My Story (2)>
+Book.objects.get(rating=5)
+# <Book: Harry Potter 1 (5)>
+Book.objects.all()
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>, <Book: My Story (2)>, <Book: Some random book (1)>]>
+Book.objects.get(is_bestselling=True)
+# Traceback (most recent call last):
+#   ...
+# django.core.exceptions.MultipleObjectsReturned: get() returned more than one Book -- it returned 2!
+```
+
+**filter method**
+
+```py
+Book.objects.filter(is_bestselling=True)
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+Book.objects.filter(is_bestselling=False)
+# <QuerySet [<Book: My Story (2)>, <Book: Some random book (1)>]>
+Book.objects.filter(is_bestselling=False, rating=2)
+# <QuerySet [<Book: My Story (2)>]>
+Book.objects.filter(rating<3)
+# Traceback (most recent call last):
+#   ...
+# NameError: name 'rating' is not defined
+Book.objects.filter(rating__lt=3)
+# <QuerySet [<Book: My Story (2)>, <Book: Some random book (1)>]>
+Book.objects.filter(rating__lt=3, title__contains="Story")
+# <QuerySet [<Book: My Story (2)>]>
+```
+
+**case-insensitive lookups and "OR" queries using Q objects**
+
+```py
+Book.objects.filter(rating__lt=3, title__contains="story")
+# <QuerySet []>, but works for sqlite
+Book.objects.filter(rating__lt=3, title__icontains="story")
+# <QuerySet [<Book: My Story (2)>]>
+from django.db.models import Q
+Book.objects.filter(Q(rating__lt=3) | Q(is_bestselling=True)))
+#   File "<console>", line 1
+#     Book.objects.filter(Q(rating__lt=3) | Q(is_bestselling=True)))
+#                                                                 ^
+# SyntaxError: unmatched ')'
+Book.objects.filter(Q(rating__lt=3) | Q(is_bestselling=True))
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>, <Book: My Story (2)>, <Book: Some random book (1)>]>
+
+Book.objects.filter(Q(rating__lt=3) | Q(is_bestselling=True), Q(author="J.K. Rowling"))
+# <QuerySet [<Book: Harry Potter 1 (5)>]>
+Book.objects.filter(Q(rating__lt=3) | Q(is_bestselling=True), author="J.K. Rowling")
+# <QuerySet [<Book: Harry Potter 1 (5)>]>
+Book.objects.filter(author="J.K. Rowling", Q(rating__lt=3) | Q(is_bestselling=True))
+#   File "<console>", line 1
+#     Book.objects.filter(author="J.K. Rowling", Q(rating__lt=3) | Q(is_bestselling=True))
+#                                              ^
+# SyntaxError: positional argument follows keyword argument
+```
+
+**Query Optimizations**
+
+```py
+bestsellers = Book.objects.filter(is_bestselling=True)
+amazing_bestsellers = bestsellers.filter(rating__gt=4)
+print(bestsellers)
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+print(amazing_bestsellers)
+# <QuerySet [<Book: Harry Potter 1 (5)>]>
+print(bestsellers)
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+
+print(Book.objects.filter(rating__gt=3))
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+print(Book.objects.filter(rating__gt=3))
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+good_books = Book.objects.filter(rating__gt=3)
+print(good_books)
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+print(good_books)
+# <QuerySet [<Book: Lord of the Rings (4)>, <Book: Harry Potter 1 (5)>]>
+```
+
+**Ordering and Aggregation**
+
+```py
+# Ordering
+Book.objects.order_by('title')  # Ascending
+Book.objects.order_by('-title')  # Descending
+# Aggregation
+Book.objects.aggregate(Avg('rating'))
+Book.objects.aggregate(total=Count('id'))
+```
+
+---
+
+### QuerySet Methods
+
+| Method       | Description                                   |
+| ------------ | --------------------------------------------- |
+| `all()`      | Get all records                               |
+| `get()`      | Get single record (raises error if not found) |
+| `filter()`   | Get records matching conditions               |
+| `exclude()`  | Get records NOT matching conditions           |
+| `order_by()` | Sort records                                  |
+| `first()`    | Get first record                              |
+| `last()`     | Get last record                               |
+| `count()`    | Count records                                 |
+| `exists()`   | Check if records exist                        |
+| `values()`   | Return dictionaries instead of objects        |
+| `distinct()` | Remove duplicates                             |
+
+---
+
+### Lookup Expressions (Filters)
+
+| Lookup       | Description               | Example                             |
+| ------------ | ------------------------- | ----------------------------------- |
+| `exact`      | Exact match               | `filter(name__exact='John')`        |
+| `iexact`     | Case-insensitive exact    | `filter(name__iexact='john')`       |
+| `contains`   | Contains substring        | `filter(title__contains='Python')`  |
+| `icontains`  | Case-insensitive contains | `filter(title__icontains='python')` |
+| `startswith` | Starts with               | `filter(name__startswith='J')`      |
+| `endswith`   | Ends with                 | `filter(email__endswith='.com')`    |
+| `gt`         | Greater than              | `filter(age__gt=18)`                |
+| `gte`        | Greater than or equal     | `filter(age__gte=18)`               |
+| `lt`         | Less than                 | `filter(price__lt=100)`             |
+| `lte`        | Less than or equal        | `filter(price__lte=100)`            |
+| `in`         | In a list                 | `filter(id__in=[1, 2, 3])`          |
+| `isnull`     | Is NULL                   | `filter(bio__isnull=True)`          |
+
+---
+
+**Implementing Models in Django**
+
+**Create book_outlet\templates\book_outlet\base.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock title %}</title>
+  </head>
+  <body>
+    {% block content %} {% endblock content %}
+  </body>
+</html>
+```
+
+**Create book_outlet\templates\book_outlet\index.html**
+
+```html
+<pre>
+{% extends "book_outlet/base.html" %}
+
+{% block title %}
+  All Books
+{% endblock title %}
+
+{% block content %}
+  <ul>
+    <li>Book 1...</li>
+  </ul>
+{% endblock content %}
+</pre>
+```
+
+**Register url**
+
+```py
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.index)
+]
+```
+
+**Create view**
+
+```py
+from django.shortcuts import render
+
+def index(request):
+  return render(request, "book_outlet/index.html")
+```
+
+**Update view**
+
+```py
+from django.shortcuts import render
+
+from .models import Book
+
+def index(request):
+  books = Book.objects.all()
+  return render(request, "book_outlet/index.html", {
+    "books": books
+  })
+```
+
+**Update book_outlet\templates\book_outlet\index.html**
+
+```html
+<pre>
+{% extends "book_outlet/base.html" %}
+
+{% block title %}
+  All Books
+{% endblock title %}
+
+{% block content %}
+  <ul>
+    {% for book in books %}
+      <li>{{ book.title }} (Rating: {{ book.rating }})</li>
+    {% endfor %}
+  </ul>
+{% endblock content %}
+</pre>
+```
+
+---
+
+**Create book_outlet\templates\book_outlet\book_detail.html**
+
+```html
+<pre>
+{% extends "book_outlet/base.html" %}
+
+{% block title %}
+  {{ title }}
+{% endblock %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  <h2>{{ author }}</h2>
+  <p>The book has a rating of {{ rating }} 
+  {% if is_bestseller %}
+    and is a bestseller.
+  {% else %}
+    but isn't a bestseller.
+  {% endif %}
+  </p>
+{% endblock %}
+</pre>
+```
+
+**Add Book detail url**
+
+```py
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.index),
+    path("<int:id>", views.book_detail, name="book-detail")
+]
+```
+
+**Add Book detail view**
+
+```py
+from django.shortcuts import get_object_or_404, render
+from django.http import Http404
+
+
+def book_detail(request, id):
+  # try:
+  #   book = Book.objects.get(pk=id)
+  # except:
+  #   raise Http404()
+  book = get_object_or_404(Book, pk=id)
+  return render(request, "book_outlet/book_detail.html", {
+    "title": book.title,
+    "author": book.author,
+    "rating": book.rating,
+    "is_bestseller": book.is_bestselling
+  })
+```
+
+**Update index page**
+
+```html
+<pre>
+{% extends "book_outlet/base.html" %}
+
+{% block title %}
+  All Books
+{% endblock %}
+
+{% block content %}
+  <ul>
+    {% for book in books %}
+      <li>
+        <a href="{% url 'book-detail' book.id %}">
+          {{ book.title }}
+        </a>
+        (Rating: {{ book.rating }})
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+</pre>
+```
+
+---
+
+**Using slug instead of id**
+
+**Update model**
+
+```py
+from django.core import validators
+from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.urls import reverse
+from django.utils.text import slugify
+
+
+class Book(models.Model):
+    title = models.CharField(max_length=50)
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)])
+    author = models.CharField(null=True, max_length=100)
+    is_bestselling = models.BooleanField(default=False)
+    # Harry Potter 1 => harry-potter-1
+    slug = models.SlugField(default="", null=False, db_index=True)
+
+    def get_absolute_url(self):
+        return reverse("book-detail", args=[self.slug])
+        # return reverse("book-detail", args=[self.id])
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.title} ({self.rating})"
+```
+
+**Just call save again to add slug**
+
+```py
+Book.objects.get(title="Harry Potter 1").save()
+Book.objects.get(title="Harry Potter 1").slug
+# 'harry-potter-1'
+Book.objects.get(title="Lord of the Rings").save()
+Book.objects.get(title="Lord of the Rings").slug
+# 'lord-of-the-rings'
+Book.objects.get(title="My Story").save()
+Book.objects.get(title="Some random book").save()
+```
+
+**Update urls**
+
+```py
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path("", views.index),
+    path("<slug:slug>", views.book_detail, name="book-detail")
+]
+```
+
+**Update view**
+
+```py
+def book_detail(request, slug):
+  book = get_object_or_404(Book, slug=slug)
+  return render(request, "book_outlet/book_detail.html", {
+    "title": book.title,
+    "author": book.author,
+    "rating": book.rating,
+    "is_bestseller": book.is_bestselling
+  })
+```
+
+**Update index page**
+
+```html
+<pre>
+{% extends "book_outlet/base.html" %}
+
+{% block title %}
+  All Books
+{% endblock %}
+
+{% block content %}
+  <ul>
+    {% for book in books %}
+      <li><a href="{{ book.get_absolute_url }}">{{ book.title }}</a> (Rating: {{ book.rating }})</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+</pre>
+```
+
+---
+
+**Adding Summary**
+
+**Update view**
+
+```py
+from django.db.models import Avg
+
+def index(request):
+  books = Book.objects.all().order_by("-rating")
+  num_books = books.count()
+  avg_rating = books.aggregate(Avg("rating")) # rating__avg, rating__min
+
+  return render(request, "book_outlet/index.html", {
+    "books": books,
+    "total_number_of_books": num_books,
+    "average_rating": avg_rating
+  })
+```
+
+**Update index page**
+
+```html
+<pre>
+{% extends "book_outlet/base.html" %}
+
+{% block title %}
+  All Books
+{% endblock %}
+
+{% block content %}
+  <ul>
+    {% for book in books %}
+      <li><a href="{{ book.get_absolute_url }}">{{ book.title }}</a> (Rating: {{ book.rating }})</li>
+    {% endfor %}
+  </ul>
+
+  <hr>
+
+  <p>Total Number Of Books: {{ total_number_of_books }}</p>
+  <p>Average Rating: {{ average_rating.rating__avg }}</p>
+{% endblock %}
+</pre>
+```
+
+---
+
+---
+
+---
+
 ## Module 5: Project Blog - Basics
 
 ### 5.1 Module Introduction
