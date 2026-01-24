@@ -2516,3 +2516,547 @@ birth_date = forms.DateField(
 ```
 
 ---
+
+## Basics of Django Forms
+
+Django forms provide a powerful way to handle user input, validate data, and render HTML forms. Forms in Django help you avoid writing repetitive HTML form code and provide built-in validation mechanisms.
+
+---
+
+### Why Use Django Forms?
+
+| Benefit                 | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| **Automatic Rendering** | Forms can render themselves as HTML         |
+| **Validation**          | Built-in and custom validation support      |
+| **Security**            | CSRF protection, XSS prevention             |
+| **Data Binding**        | Easy binding of form data to Python objects |
+| **Error Handling**      | Automatic error message handling            |
+
+---
+
+### Types of Django Forms
+
+Django provides two main types of forms:
+
+1. **`forms.Form`** - Regular forms (not tied to any model)
+2. **`forms.ModelForm`** - Forms that are automatically generated from models
+
+---
+
+### 1. Creating a Regular Form (`forms.Form`)
+
+Regular forms are created by subclassing `forms.Form`. Each form field corresponds to an HTML input element.
+
+```python
+# forms.py
+from django import forms
+
+
+class ContactForm(forms.Form):
+    name = forms.CharField(max_length=100)
+    email = forms.EmailField()
+    message = forms.CharField(widget=forms.Textarea)
+    phone = forms.CharField(max_length=15, required=False)
+```
+
+---
+
+### 2. Creating a ModelForm (`forms.ModelForm`)
+
+ModelForms automatically create form fields based on model fields. This reduces code duplication.
+
+```python
+# models.py
+from django.db import models
+
+
+class Student(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField()
+    roll_number = models.IntegerField()
+    department = models.CharField(max_length=50)
+```
+
+```python
+# forms.py
+from django import forms
+from .models import Student
+
+
+class StudentForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = ['name', 'email', 'roll_number', 'department']
+        # Or use '__all__' to include all fields
+        # fields = '__all__'
+
+        # Exclude specific fields
+        # exclude = ['created_at']
+```
+
+---
+
+### Common Form Fields
+
+| Field Type            | Description                  | HTML Element                    |
+| --------------------- | ---------------------------- | ------------------------------- |
+| `CharField`           | Text input                   | `<input type="text">`           |
+| `EmailField`          | Email input with validation  | `<input type="email">`          |
+| `IntegerField`        | Integer input                | `<input type="number">`         |
+| `FloatField`          | Decimal number input         | `<input type="number">`         |
+| `DateField`           | Date input                   | `<input type="date">`           |
+| `DateTimeField`       | Date and time input          | `<input type="datetime-local">` |
+| `BooleanField`        | Checkbox                     | `<input type="checkbox">`       |
+| `ChoiceField`         | Dropdown select              | `<select>`                      |
+| `MultipleChoiceField` | Multiple selection           | `<select multiple>`             |
+| `FileField`           | File upload                  | `<input type="file">`           |
+| `ImageField`          | Image upload with validation | `<input type="file">`           |
+
+---
+
+### Form Field Arguments
+
+Common arguments that can be passed to form fields:
+
+```python
+from django import forms
+
+
+class ExampleForm(forms.Form):
+    # required - is the field mandatory? (default True)
+    name = forms.CharField(required=True)
+
+    # max_length - maximum character length
+    username = forms.CharField(max_length=50)
+
+    # min_length - minimum character length
+    password = forms.CharField(min_length=8)
+
+    # initial - default value
+    country = forms.CharField(initial='Nepal')
+
+    # help_text - helper text for the field
+    email = forms.EmailField(help_text='Enter a valid email address')
+
+    # label - custom label for the field
+    dob = forms.DateField(label='Date of Birth')
+
+    # error_messages - custom error messages
+    phone = forms.CharField(
+        error_messages={
+            'required': 'Phone number is required',
+            'max_length': 'Phone number too long'
+        }
+    )
+
+    # disabled - make field read-only
+    id_number = forms.CharField(disabled=True)
+```
+
+---
+
+### Widgets
+
+Widgets control how form fields are rendered in HTML. You can customize the appearance using widgets.
+
+```python
+from django import forms
+
+
+class ContactForm(forms.Form):
+    # Textarea widget for multiline text
+    message = forms.CharField(widget=forms.Textarea)
+
+    # Password input
+    password = forms.CharField(widget=forms.PasswordInput)
+
+    # Hidden input
+    token = forms.CharField(widget=forms.HiddenInput)
+
+    # Date input
+    birth_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+
+    # Select/Dropdown
+    CHOICES = [('M', 'Male'), ('F', 'Female'), ('O', 'Other')]
+    gender = forms.ChoiceField(widget=forms.Select, choices=CHOICES)
+
+    # Radio buttons
+    priority = forms.ChoiceField(
+        widget=forms.RadioSelect,
+        choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High')]
+    )
+
+    # Checkboxes for multiple choices
+    hobbies = forms.MultipleChoiceField(
+        widget=forms.CheckboxSelectMultiple,
+        choices=[('reading', 'Reading'), ('sports', 'Sports'), ('music', 'Music')]
+    )
+
+    # Adding CSS classes and attributes
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your email',
+            'id': 'email-field'
+        })
+    )
+```
+
+---
+
+### Form Validation
+
+#### Built-in Validation
+
+Django provides automatic validation based on field types:
+
+```python
+from django import forms
+
+
+class RegistrationForm(forms.Form):
+    email = forms.EmailField()  # Validates email format
+    age = forms.IntegerField(min_value=18, max_value=100)  # Range validation
+    website = forms.URLField()  # Validates URL format
+```
+
+---
+
+#### Custom Field Validation (`clean_<fieldname>`)
+
+Create custom validation for specific fields using `clean_<fieldname>()` methods:
+
+```python
+from django import forms
+import re
+
+
+class UserForm(forms.Form):
+    username = forms.CharField(max_length=50)
+    password = forms.CharField(widget=forms.PasswordInput)
+    confirm_password = forms.CharField(widget=forms.PasswordInput)
+    phone = forms.CharField(max_length=10)
+
+    def clean_username(self):
+        """Username must start with a letter"""
+        username = self.cleaned_data.get('username')
+        if not username[0].isalpha():
+            raise forms.ValidationError('Username must start with a letter')
+        return username
+
+    def clean_phone(self):
+        """Phone must be 10 digits starting with 98, 97, or 96"""
+        phone = self.cleaned_data.get('phone')
+        if not re.match(r'^(98|97|96)\d{8}$', phone):
+            raise forms.ValidationError('Invalid phone number format')
+        return phone
+
+    def clean(self):
+        """Cross-field validation - validate multiple fields together"""
+        cleaned_data = super().clean()
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+
+        if password and confirm_password:
+            if password != confirm_password:
+                raise forms.ValidationError('Passwords do not match')
+
+        return cleaned_data
+```
+
+---
+
+### Using Forms in Views
+
+#### Function-Based View
+
+```python
+# views.py
+from django.shortcuts import render, redirect
+from .forms import ContactForm
+
+
+def contact_view(request):
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+
+        if form.is_valid():
+            # Access cleaned data
+            name = form.cleaned_data['name']
+            email = form.cleaned_data['email']
+            message = form.cleaned_data['message']
+
+            # Process the data (save to database, send email, etc.)
+            # ...
+
+            return redirect('success')
+    else:
+        form = ContactForm()
+
+    return render(request, 'contact.html', {'form': form})
+```
+
+---
+
+#### Using ModelForm to Create/Update Records
+
+```python
+# views.py
+from django.shortcuts import render, redirect, get_object_or_404
+from .forms import StudentForm
+from .models import Student
+
+
+def create_student(request):
+    if request.method == 'POST':
+        form = StudentForm(request.POST)
+        if form.is_valid():
+            form.save()  # Automatically saves to database
+            return redirect('student_list')
+    else:
+        form = StudentForm()
+
+    return render(request, 'student_form.html', {'form': form})
+
+
+def update_student(request, pk):
+    student = get_object_or_404(Student, pk=pk)
+
+    if request.method == 'POST':
+        form = StudentForm(request.POST, instance=student)
+        if form.is_valid():
+            form.save()
+            return redirect('student_list')
+    else:
+        form = StudentForm(instance=student)
+
+    return render(request, 'student_form.html', {'form': form})
+```
+
+---
+
+### Rendering Forms in Templates
+
+There are multiple ways to render forms in Django templates:
+
+#### Method 1: Auto Rendering
+
+```html
+<!-- Render entire form automatically -->
+<form method="POST">
+  {% csrf_token %} {{ form.as_p }}
+  <!-- Render as paragraphs -->
+  <button type="submit">Submit</button>
+</form>
+```
+
+Other rendering options:
+
+- `{{ form.as_p }}` - Renders fields wrapped in `<p>` tags
+- `{{ form.as_table }}` - Renders fields as table rows
+- `{{ form.as_ul }}` - Renders fields as list items
+
+---
+
+#### Method 2: Manual Field Rendering
+
+```html
+<form method="POST">
+  {% csrf_token %}
+
+  <div class="form-group">
+    <label for="{{ form.name.id_for_label }}">Name:</label>
+    {{ form.name }} {% if form.name.errors %}
+    <span class="error">{{ form.name.errors.0 }}</span>
+    {% endif %}
+  </div>
+
+  <div class="form-group">
+    <label for="{{ form.email.id_for_label }}">Email:</label>
+    {{ form.email }} {% if form.email.errors %}
+    <span class="error">{{ form.email.errors.0 }}</span>
+    {% endif %}
+  </div>
+
+  <button type="submit">Submit</button>
+</form>
+```
+
+---
+
+#### Method 3: Loop Through Fields
+
+```html
+<form method="POST">
+  {% csrf_token %} {% for field in form %}
+  <div class="form-group">
+    <label>{{ field.label }}</label>
+    {{ field }} {% if field.help_text %}
+    <small>{{ field.help_text }}</small>
+    {% endif %} {% for error in field.errors %}
+    <span class="error">{{ error }}</span>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <!-- Display non-field errors -->
+  {% if form.non_field_errors %}
+  <div class="errors">
+    {% for error in form.non_field_errors %}
+    <p>{{ error }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <button type="submit">Submit</button>
+</form>
+```
+
+---
+
+### Complete Example
+
+Here's a complete example showing model, form, view, and template:
+
+**Model:**
+
+```python
+# models.py
+from django.db import models
+
+
+class Book(models.Model):
+    title = models.CharField(max_length=200)
+    author = models.CharField(max_length=100)
+    isbn = models.CharField(max_length=13)
+    published_date = models.DateField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return self.title
+```
+
+**Form:**
+
+```python
+# forms.py
+from django import forms
+from .models import Book
+
+
+class BookForm(forms.ModelForm):
+    class Meta:
+        model = Book
+        fields = ['title', 'author', 'isbn', 'published_date', 'price']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'author': forms.TextInput(attrs={'class': 'form-control'}),
+            'isbn': forms.TextInput(attrs={'class': 'form-control'}),
+            'published_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean_isbn(self):
+        isbn = self.cleaned_data.get('isbn')
+        if len(isbn) != 13:
+            raise forms.ValidationError('ISBN must be exactly 13 characters')
+        return isbn
+```
+
+**View:**
+
+```python
+# views.py
+from django.shortcuts import render, redirect
+from .forms import BookForm
+
+
+def add_book(request):
+    if request.method == 'POST':
+        form = BookForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('book_list')
+    else:
+        form = BookForm()
+
+    return render(request, 'add_book.html', {'form': form})
+```
+
+**Template:**
+
+```html
+<!-- templates/add_book.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Add Book</title>
+    <style>
+      .form-control {
+        padding: 8px;
+        width: 300px;
+        margin-bottom: 10px;
+      }
+      .error {
+        color: red;
+        font-size: 0.9em;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Add New Book</h1>
+
+    <form method="POST">
+      {% csrf_token %} {% for field in form %}
+      <div>
+        <label>{{ field.label }}</label>
+        {{ field }} {% for error in field.errors %}
+        <span class="error">{{ error }}</span>
+        {% endfor %}
+      </div>
+      {% endfor %}
+
+      <button type="submit">Add Book</button>
+    </form>
+  </body>
+</html>
+```
+
+**URL:**
+
+```python
+# urls.py
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('book/add/', views.add_book, name='add_book'),
+]
+```
+
+---
+
+### Summary Table
+
+| Concept                  | Description                                          |
+| ------------------------ | ---------------------------------------------------- |
+| **forms.Form**           | Regular form not tied to any model                   |
+| **forms.ModelForm**      | Form automatically generated from a model            |
+| **cleaned_data**         | Dictionary containing validated form data            |
+| **is_valid()**           | Method to check if form data passes all validations  |
+| **clean\_<fieldname>()** | Custom validation method for a specific field        |
+| **clean()**              | Method for cross-field validation                    |
+| **save()**               | ModelForm method to save data to database            |
+| **widgets**              | Control HTML rendering of form fields                |
+| **{% csrf_token %}**     | Template tag for CSRF protection (required for POST) |
+
+---
