@@ -10,6 +10,7 @@
 - [Django Setup](#django-setup)
 - [URLs & Views](#urls--views)
 - [Templates & Static Files](#templates--static-files)
+- [Data and Models](#data-and-models)
 
 ---
 
@@ -1286,16 +1287,6 @@ Book.objects.all()[1].is_bestselling
 # True
 ```
 
-```py
-from django.contrib import admin
-from django.urls import path, include
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("", include("book_outlet.urls"))
-]
-```
-
 **Delete**
 
 ```py
@@ -1492,6 +1483,16 @@ Book.objects.aggregate(total=Count('id'))
 ```
 
 **Register url**
+
+```py
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path("", include("book_outlet.urls"))
+]
+```
 
 ```py
 from django.urls import path
